@@ -1,0 +1,50 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+*secret*
+*token*
+*credential*
+*credentials*
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+target/
+coverage/
+.vite/
+.cache/
+*.log
+*.tmp
+*.temp
+*.db
+*.sqlite
+
+# Local QA and agent artifacts
+memory/
+**/memory/
+skill/
+skills/
+**/skill/
+**/skills/
+trajectory/
+trajectories/
+**/trajectory/
+**/trajectories/
+*_traces/
+*_traces_*/
+qa/
+**/qa/
+.playwright-cli/
+.claude/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
