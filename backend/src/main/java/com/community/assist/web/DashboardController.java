@@ -25,11 +25,13 @@ public class DashboardController {
     private final PaymentRepository paymentRepo;
     private final ServiceEventRepository eventRepo;
     private final RepairOrderRepository repairRepo;
+    private final FitReviewRepository fitReviewRepo;
 
     public DashboardController(ElderlyRepository elderlyRepo, DeviceUnitRepository unitRepo,
                                RentalOrderRepository rentalRepo, FeedbackRepository feedbackRepo,
                                SubsidyRepository subsidyRepo, PaymentRepository paymentRepo,
-                               ServiceEventRepository eventRepo, RepairOrderRepository repairRepo) {
+                               ServiceEventRepository eventRepo, RepairOrderRepository repairRepo,
+                               FitReviewRepository fitReviewRepo) {
         this.elderlyRepo = elderlyRepo;
         this.unitRepo = unitRepo;
         this.rentalRepo = rentalRepo;
@@ -38,6 +40,7 @@ public class DashboardController {
         this.paymentRepo = paymentRepo;
         this.eventRepo = eventRepo;
         this.repairRepo = repairRepo;
+        this.fitReviewRepo = fitReviewRepo;
     }
 
     @GetMapping("/stats")
@@ -50,6 +53,9 @@ public class DashboardController {
         m.put("pendingSubsidies", subsidyRepo.countByStatus(SubsidyStatus.PENDING));
         m.put("pendingRepairs", repairRepo.countByStatus(RepairStatus.PENDING)
                 + repairRepo.countByStatus(RepairStatus.IN_PROGRESS));
+        m.put("pendingFitReviews", fitReviewRepo.countByStatus(FitReviewStatus.PENDING_INFO)
+                + fitReviewRepo.countByStatus(FitReviewStatus.PENDING_REVIEW)
+                + fitReviewRepo.countByStatus(FitReviewStatus.EXCHANGING));
 
         Map<String, Long> unitStatus = new LinkedHashMap<>();
         for (DeviceStatus s : DeviceStatus.values()) {

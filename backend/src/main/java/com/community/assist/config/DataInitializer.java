@@ -30,6 +30,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PaymentRepository paymentRepo;
     private final SubsidyRepository subsidyRepo;
     private final ServiceEventRepository eventRepo;
+    private final FitReviewRepository fitReviewRepo;
     private final PasswordEncoder encoder;
 
     private int paySeq = 1;
@@ -39,7 +40,8 @@ public class DataInitializer implements CommandLineRunner {
                            DeviceUnitRepository unitRepo, RentalOrderRepository rentalRepo,
                            FeedbackRepository feedbackRepo, RepairOrderRepository repairRepo,
                            PaymentRepository paymentRepo, SubsidyRepository subsidyRepo,
-                           ServiceEventRepository eventRepo, PasswordEncoder encoder) {
+                           ServiceEventRepository eventRepo, FitReviewRepository fitReviewRepo,
+                           PasswordEncoder encoder) {
         this.userRepo = userRepo;
         this.elderlyRepo = elderlyRepo;
         this.assessmentRepo = assessmentRepo;
@@ -51,15 +53,21 @@ public class DataInitializer implements CommandLineRunner {
         this.paymentRepo = paymentRepo;
         this.subsidyRepo = subsidyRepo;
         this.eventRepo = eventRepo;
+        this.fitReviewRepo = fitReviewRepo;
         this.encoder = encoder;
     }
 
     @Override
     @Transactional
     public void run(String... args) {
-        if (userRepo.count() > 0) {
-            return;
+        if (userRepo.count() == 0) {
+            seedAll();
         }
+        seedFitDemo();
+    }
+
+    /** 首轮全量演示数据 */
+    private void seedAll() {
         LocalDate today = LocalDate.now();
 
         // ---------- 账号 ----------
@@ -276,6 +284,108 @@ public class DataInitializer implements CommandLineRunner {
         pay(e1, r1, u1, PaymentType.SUBSIDY, PaymentDirection.INCOME, 600, PaymentStatus.PAID, "补贴审核通过-到账抵扣", monthsAgo(3, 9));
         pay(e2, r3, u6, PaymentType.SUBSIDY, PaymentDirection.INCOME, 150, PaymentStatus.PAID, "补贴审核通过-到账抵扣", monthsAgo(3, 28));
         pay(e3, r4, u13, PaymentType.SUBSIDY, PaymentDirection.INCOME, 90, PaymentStatus.PAID, "补贴审核通过-到账抵扣", monthsAgo(6, 8));
+    }
+
+    /**
+     * 尺寸复评演示数据（幂等：新老数据库均执行）。
+     * 1) 为在租订单补齐出库适配记录；2) 一条已完成（培训）复评 + 一条待家属上传资料的复评。
+     */
+    private void seedFitDemo() {
+        String ware = "赵仓储（仓储运维）";
+        // 1) 在租订单出库适配记录
+        for (RentalOrder o : rentalRepo.findByStatusOrderByIdDesc(RentalStatus.ACTIVE)) {
+            if (o.getElderlyCondition() == null) {
+                o.setElderlyCondition("意识清楚，生命体征平稳，可配合辅具适配");
+                o.setFittingAdvice("按评估建议完成调试，家属已现场学习基本操作，定期复查适配情况");
+                o.setFamilyConfirmed(true);
+                o.setFamilyConfirmTime(o.getInstallTime() == null
+                        ? LocalDateTime.now().minusDays(1) : o.getInstallTime().plusHours(1));
+                rentalRepo.save(o);
+                unitRepo.findById(o.getDeviceUnitId()).ifPresent(u -> {
+                    ServiceEvent e = new ServiceEvent();
+                    e.setDeviceUnitId(u.getId());
+                    e.setRentalOrderId(o.getId());
+                    e.setElderlyId(o.getElderlyId());
+                    e.setType(ServiceEventType.HANDOVER);
+                    e.setTitle("出库适配记录");
+                    e.setDetail("老人身体状况已登记，适配建议已告知，家属确认完成");
+                    e.setOperatorName(ware);
+                    e.setCreatedAt(o.getInstallTime() == null
+                            ? LocalDateTime.now().minusDays(1) : o.getInstallTime().plusHours(1));
+                    eventRepo.save(e);
+                });
+            }
+        }
+
+        if (fitReviewRepo.count() > 0) {
+            return;
+        }
+        Elderly e1 = elderlyRepo.findByNameContainingOrderByIdDesc("张桂兰").stream().findFirst().orElse(null);
+        User assessor = userRepo.findByUsername("assessor").orElse(null);
+        if (e1 == null || assessor == null) {
+            return;
+        }
+        RentalOrder bedOrder = null, chairOrder = null;
+        for (RentalOrder o : rentalRepo.findByElderlyIdOrderByIdDesc(e1.getId())) {
+            if (o.getStatus() != RentalStatus.ACTIVE) {
+                continue;
+            }
+            DeviceModel m = modelRepo.findById(o.getModelId()).orElse(null);
+            if (m == null) {
+                continue;
+            }
+            if (m.getCategory() == DeviceCategory.NURSING_BED && bedOrder == null) {
+                bedOrder = o;
+            }
+            if (m.getCategory() == DeviceCategory.WHEELCHAIR && chairOrder == null) {
+                chairOrder = o;
+            }
+        }
+        // 已完成的复评：护理床 → 操作问题 → 培训
+        if (bedOrder != null) {
+            final RentalOrder bo = bedOrder;
+            FitReview fr = new FitReview();
+            fr.setReviewNo("FR20260901001");
+            fr.setRentalOrderId(bo.getId());
+            fr.setElderlyId(e1.getId());
+            fr.setDeviceUnitId(bo.getDeviceUnitId());
+            fr.setStatus(FitReviewStatus.COMPLETED);
+            fr.setHeightCm(158);
+            fr.setWeightKg(62.5);
+            fr.setRoomWidthCm(320);
+            fr.setRoomLengthCm(360);
+            fr.setCaregiverNote("老人反映床沿太高，起身时压腿，担心摔倒");
+            fr.setSubmittedAt(daysAgo(20));
+            fr.setConclusion(FitConclusion.OPERATION_ISSUE);
+            fr.setAction(FitAction.TRAINING);
+            fr.setConclusionNote("床高与起背角度调节不当导致压腿，非尺寸问题；已现场培训照护人使用三功能遥控器并张贴操作卡");
+            fr.setAssessorId(assessor.getId());
+            fr.setAssessorName(assessor.getName());
+            fr.setReviewedAt(daysAgo(18));
+            fr.setCreatedAt(daysAgo(22));
+            fitReviewRepo.save(fr);
+            unitRepo.findById(bo.getDeviceUnitId()).ifPresent(u -> {
+                ev(u, bo, e1, ServiceEventType.FIT_REVIEW, "发起尺寸复评", "家属反馈床沿压腿，发起复评", "王芳（社区工作人员）", daysAgo(22));
+                ev(u, bo, e1, ServiceEventType.FIT_REVIEW, "复评结论：操作问题", "处置：培训；已现场培训照护人", assessor.getName(), daysAgo(18));
+                ev(u, bo, e1, ServiceEventType.TRAINING, "操作培训", "三功能遥控器使用培训完成，张贴操作卡", assessor.getName(), daysAgo(18));
+            });
+        }
+        // 待家属上传资料的复评：轮椅
+        if (chairOrder != null) {
+            final RentalOrder co = chairOrder;
+            FitReview fr = new FitReview();
+            fr.setReviewNo("FR20260910001");
+            fr.setRentalOrderId(co.getId());
+            fr.setElderlyId(e1.getId());
+            fr.setDeviceUnitId(co.getDeviceUnitId());
+            fr.setStatus(FitReviewStatus.PENDING_INFO);
+            fr.setCreatedAt(daysAgo(1));
+            fitReviewRepo.save(fr);
+            unitRepo.findById(co.getDeviceUnitId()).ifPresent(u ->
+                    ev(u, co, e1, ServiceEventType.FIT_REVIEW, "发起尺寸复评",
+                            "家属反映轮椅久坐不适，待上传使用照片、身高体重、房间尺寸与照护人说明",
+                            "王芳（社区工作人员）", daysAgo(1)));
+        }
     }
 
     // ---------- 构造辅助 ----------

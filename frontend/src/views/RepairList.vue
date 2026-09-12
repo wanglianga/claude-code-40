@@ -22,6 +22,13 @@
         <el-table-column label="维修费用" width="100">
           <template #default="{ row }">{{ row.repair.cost != null ? '¥' + row.repair.cost : '-' }}</template>
         </el-table-column>
+        <el-table-column label="误用判定" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.repair.misuse === true" type="danger" size="small">家属误用</el-tag>
+            <el-tag v-else-if="row.repair.misuse === false" type="success" size="small">正常磨损</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="repair.resultNote" label="维修结果" min-width="150" show-overflow-tooltip />
         <el-table-column label="创建时间" width="150">
           <template #default="{ row }">{{ fmtTime(row.repair.createdAt) }}</template>
@@ -37,13 +44,28 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="finishDlg" title="完成维修" width="420px">
+    <el-dialog v-model="finishDlg" title="完成维修" width="480px">
+      <el-alert v-if="currentHandover?.elderlyCondition" type="info" :closable="false" style="margin-bottom: 12px">
+        <b>出库适配记录：</b>{{ currentHandover.elderlyCondition }}
+        <div v-if="currentHandover.fittingAdvice">适配建议：{{ currentHandover.fittingAdvice }}</div>
+        <div>家属确认：{{ currentHandover.familyConfirmed ? '已确认' : '未确认' }}</div>
+      </el-alert>
       <el-form label-width="90px">
         <el-form-item label="维修费用">
           <el-input-number v-model="finishForm.cost" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
         <el-form-item label="维修结果">
           <el-input v-model="finishForm.resultNote" type="textarea" :rows="2" placeholder="更换部件/调试结果" />
+        </el-form-item>
+        <el-form-item label="误用判定">
+          <el-radio-group v-model="finishForm.misuse">
+            <el-radio :value="false">正常磨损</el-radio>
+            <el-radio :value="true">家属误用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="finishForm.misuse" label="误用说明">
+          <el-input v-model="finishForm.misuseNote" type="textarea" :rows="2"
+                    placeholder="对照出库适配记录说明误用情况" />
         </el-form-item>
       </el-form>
       <el-alert type="info" :closable="false">
@@ -71,7 +93,8 @@ const loading = ref(false)
 const statusFilter = ref('')
 const finishDlg = ref(false)
 const finishId = ref(null)
-const finishForm = ref({ cost: 0, resultNote: '' })
+const finishForm = ref({ cost: 0, resultNote: '', misuse: false, misuseNote: '' })
+const currentHandover = ref(null)
 
 async function load() {
   loading.value = true
@@ -90,7 +113,8 @@ async function start(row) {
 
 function openFinish(row) {
   finishId.value = row.repair.id
-  finishForm.value = { cost: 0, resultNote: '' }
+  finishForm.value = { cost: 0, resultNote: '', misuse: false, misuseNote: '' }
+  currentHandover.value = row.handover || null
   finishDlg.value = true
 }
 

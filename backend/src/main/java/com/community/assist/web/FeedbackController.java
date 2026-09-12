@@ -6,6 +6,7 @@ import com.community.assist.repo.*;
 import com.community.assist.service.BizException;
 import com.community.assist.service.CurrentUser;
 import com.community.assist.service.EventService;
+import com.community.assist.service.FitReviewService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,22 +27,27 @@ public class FeedbackController {
     private final RentalOrderRepository rentalRepo;
     private final ElderlyRepository elderlyRepo;
     private final DeviceUnitRepository unitRepo;
+    private final DeviceModelRepository modelRepo;
     private final RepairOrderRepository repairRepo;
     private final AssessmentRepository assessmentRepo;
     private final EventService eventService;
+    private final FitReviewService fitReviewService;
     private final CurrentUser currentUser;
 
     public FeedbackController(FeedbackRepository feedbackRepo, RentalOrderRepository rentalRepo,
                               ElderlyRepository elderlyRepo, DeviceUnitRepository unitRepo,
-                              RepairOrderRepository repairRepo, AssessmentRepository assessmentRepo,
-                              EventService eventService, CurrentUser currentUser) {
+                              DeviceModelRepository modelRepo, RepairOrderRepository repairRepo,
+                              AssessmentRepository assessmentRepo, EventService eventService,
+                              FitReviewService fitReviewService, CurrentUser currentUser) {
         this.feedbackRepo = feedbackRepo;
         this.rentalRepo = rentalRepo;
         this.elderlyRepo = elderlyRepo;
         this.unitRepo = unitRepo;
+        this.modelRepo = modelRepo;
         this.repairRepo = repairRepo;
         this.assessmentRepo = assessmentRepo;
         this.eventService = eventService;
+        this.fitReviewService = fitReviewService;
         this.currentUser = currentUser;
     }
 
@@ -157,6 +163,10 @@ public class FeedbackController {
                 assessmentRepo.save(a);
                 eventService.record(unit.getId(), o.getId(), o.getElderlyId(), ServiceEventType.REASSESS,
                         "发起再次评估", note, op.getName());
+            }
+            case FIT_REVIEW -> {
+                DeviceModel model = modelRepo.findById(o.getModelId()).orElseThrow();
+                fitReviewService.create(o, unit, model, f.getId(), op.getName());
             }
             case NONE -> eventService.record(unit.getId(), o.getId(), o.getElderlyId(),
                     ServiceEventType.FEEDBACK, "反馈已答复", note, op.getName());

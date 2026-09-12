@@ -52,6 +52,7 @@ const allMenus = [
   { path: '/devices', title: '辅具库存', icon: 'Box', roles: ['ADMIN', 'STAFF', 'WAREHOUSE'] },
   { path: '/rentals', title: '租赁订单', icon: 'Tickets', roles: ['ADMIN', 'STAFF', 'WAREHOUSE', 'FAMILY'] },
   { path: '/feedback', title: '使用反馈', icon: 'ChatDotSquare', roles: ['ADMIN', 'STAFF', 'FAMILY'] },
+  { path: '/fit-reviews', title: '尺寸复评', icon: 'ScaleToOriginal', roles: ['ADMIN', 'STAFF', 'ASSESSOR', 'FAMILY'] },
   { path: '/repairs', title: '维修管理', icon: 'Tools', roles: ['ADMIN', 'STAFF', 'WAREHOUSE'] },
   { path: '/payments', title: '费用中心', icon: 'Wallet', roles: ['ADMIN', 'STAFF', 'FAMILY'] },
   { path: '/subsidies', title: '补贴管理', icon: 'Money', roles: ['ADMIN', 'STAFF', 'FAMILY'] },

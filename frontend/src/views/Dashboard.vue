@@ -62,7 +62,8 @@ const cards = computed(() => [
   { label: '可租库存', value: stats.value.unitStatus?.IN_STOCK ?? '-', color: '#409eff' },
   { label: '待处理反馈', value: stats.value.pendingFeedback ?? '-', color: '#e6a23c' },
   { label: '待审核补贴', value: stats.value.pendingSubsidies ?? '-', color: '#e6a23c' },
-  { label: '进行中维修', value: stats.value.pendingRepairs ?? '-', color: '#f56c6c' }
+  { label: '进行中维修', value: stats.value.pendingRepairs ?? '-', color: '#f56c6c' },
+  { label: '待办复评', value: stats.value.pendingFitReviews ?? '-', color: '#e6a23c' }
 ])
 
 const totalUnits = computed(() =>

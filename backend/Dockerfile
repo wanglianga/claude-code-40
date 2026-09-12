@@ -14,7 +14,7 @@ RUN apt-get update \
     && groupadd -r app && useradd -r -g app app
 WORKDIR /app
 COPY --from=build /build/target/*.jar app.jar
-RUN chown -R app:app /app
+RUN mkdir -p /app/uploads && chown -R app:app /app
 USER app
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=5 \

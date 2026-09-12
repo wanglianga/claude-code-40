@@ -21,6 +21,9 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-assist}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-assist123}
       JWT_SECRET: ${JWT_SECRET:-assist-platform-dev-secret-key-2026-09-change-me}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -36,3 +39,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

@@ -14,6 +14,7 @@ const routes = [
       { path: 'devices', component: () => import('../views/DeviceStock.vue'), meta: { title: '辅具库存', roles: ['ADMIN', 'STAFF', 'WAREHOUSE'] } },
       { path: 'rentals', component: () => import('../views/RentalList.vue'), meta: { title: '租赁订单', roles: ['ADMIN', 'STAFF', 'WAREHOUSE', 'FAMILY'] } },
       { path: 'feedback', component: () => import('../views/FeedbackList.vue'), meta: { title: '使用反馈', roles: ['ADMIN', 'STAFF', 'FAMILY'] } },
+      { path: 'fit-reviews', component: () => import('../views/FitReviewList.vue'), meta: { title: '尺寸复评', roles: ['ADMIN', 'STAFF', 'ASSESSOR', 'FAMILY'] } },
       { path: 'repairs', component: () => import('../views/RepairList.vue'), meta: { title: '维修管理', roles: ['ADMIN', 'STAFF', 'WAREHOUSE'] } },
       { path: 'payments', component: () => import('../views/PaymentList.vue'), meta: { title: '费用中心', roles: ['ADMIN', 'STAFF', 'FAMILY'] } },
       { path: 'subsidies', component: () => import('../views/SubsidyList.vue'), meta: { title: '补贴管理', roles: ['ADMIN', 'STAFF', 'FAMILY'] } },

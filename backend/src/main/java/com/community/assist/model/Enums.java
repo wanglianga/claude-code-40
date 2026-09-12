@@ -24,7 +24,7 @@ public final class Enums {
     public enum DeviceStatus {IN_STOCK, RESERVED, LEASED, MAINTENANCE, RECALLED, DISINFECTING, SCRAPPED}
 
     /** 租赁订单状态 */
-    public enum RentalStatus {PENDING_CONFIRM, CONFIRMED, DELIVERED, ACTIVE, CLOSED, CANCELLED}
+    public enum RentalStatus {PENDING_CONFIRM, CONFIRMED, DELIVERED, ACTIVE, SUSPENDED, CLOSED, CANCELLED}
 
     /** 结案原因 */
     public enum CloseReason {NORMAL, HOSPITALIZED, DECEASED, MOVED, SUBSIDY_CHANGE, DAMAGED}
@@ -45,13 +45,13 @@ public final class Enums {
     public enum FeedbackStatus {PENDING, RESOLVED}
 
     /** 反馈处置方式 */
-    public enum Resolution {NONE, REPAIR, EXCHANGE, REASSESS}
+    public enum Resolution {NONE, REPAIR, EXCHANGE, REASSESS, FIT_REVIEW}
 
     /** 维修单状态 */
     public enum RepairStatus {PENDING, IN_PROGRESS, DONE}
 
     /** 辅具生命周期事件类型 */
-    public enum ServiceEventType {CREATE, DELIVERY, INSTALL, FEEDBACK, REPAIR, EXCHANGE, REASSESS, RECALL, DISINFECT, QC, RESTOCK, SCRAP, CLOSE}
+    public enum ServiceEventType {CREATE, DELIVERY, INSTALL, HANDOVER, FEEDBACK, REPAIR, EXCHANGE, REASSESS, FIT_REVIEW, TRAINING, SUSPEND, RESUME, RECALL, DISINFECT, QC, RESTOCK, SCRAP, CLOSE}
 
     /** 费用类型：押金/租金/补贴/维修费/押金退还 */
     public enum PaymentType {DEPOSIT, RENT, SUBSIDY, REPAIR, DEPOSIT_REFUND}
@@ -64,4 +64,13 @@ public final class Enums {
 
     /** 补贴申请状态 */
     public enum SubsidyStatus {PENDING, APPROVED, REJECTED, WRITTEN_OFF}
+
+    /** 尺寸复评单状态 */
+    public enum FitReviewStatus {PENDING_INFO, PENDING_REVIEW, EXCHANGING, COMPLETED}
+
+    /** 复评结论：操作问题/尺寸不合/病情变化 */
+    public enum FitConclusion {OPERATION_ISSUE, SIZE_MISMATCH, CONDITION_CHANGE}
+
+    /** 复评处置：培训/换型/暂停租赁/无需处理 */
+    public enum FitAction {TRAINING, EXCHANGE, SUSPEND, NONE}
 }

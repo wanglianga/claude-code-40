@@ -80,6 +80,7 @@
             <el-radio-group v-model="handleForm.resolution">
               <el-radio value="REPAIR">维修（生成维修单）</el-radio>
               <el-radio value="EXCHANGE">换型（更换同型号库存）</el-radio>
+              <el-radio value="FIT_REVIEW">尺寸复评（护理床/轮椅）</el-radio>
               <el-radio value="REASSESS">再次评估（生成评估单）</el-radio>
               <el-radio value="NONE">无需上门</el-radio>
             </el-radio-group>

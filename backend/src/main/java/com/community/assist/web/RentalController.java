@@ -33,6 +33,7 @@ public class RentalController {
     private final PaymentRepository paymentRepo;
     private final FeedbackRepository feedbackRepo;
     private final ServiceEventRepository eventRepo;
+    private final FitReviewRepository fitReviewRepo;
     private final EventService eventService;
     private final CurrentUser currentUser;
 
@@ -40,6 +41,7 @@ public class RentalController {
                             DeviceModelRepository modelRepo, DeviceUnitRepository unitRepo,
                             AssessmentRepository assessmentRepo, PaymentRepository paymentRepo,
                             FeedbackRepository feedbackRepo, ServiceEventRepository eventRepo,
+                            FitReviewRepository fitReviewRepo,
                             EventService eventService, CurrentUser currentUser) {
         this.rentalRepo = rentalRepo;
         this.elderlyRepo = elderlyRepo;
@@ -49,6 +51,7 @@ public class RentalController {
         this.paymentRepo = paymentRepo;
         this.feedbackRepo = feedbackRepo;
         this.eventRepo = eventRepo;
+        this.fitReviewRepo = fitReviewRepo;
         this.eventService = eventService;
         this.currentUser = currentUser;
     }
@@ -79,6 +82,7 @@ public class RentalController {
         m.put("payments", paymentRepo.findByRentalOrderIdOrderByIdAsc(id));
         m.put("events", eventRepo.findByRentalOrderIdOrderByIdAsc(id));
         m.put("feedback", feedbackRepo.findByRentalOrderIdOrderByIdDesc(id));
+        m.put("fitReviews", fitReviewRepo.findByRentalOrderIdOrderByIdDesc(id));
         if (o.getAssessmentId() != null) {
             assessmentRepo.findById(o.getAssessmentId()).ifPresent(a -> m.put("assessment", a));
         }
@@ -192,6 +196,78 @@ public class RentalController {
         return detail(id);
     }
 
+    public record HandoverReq(String elderlyCondition, String fittingAdvice) {
+    }
+
+    /** 出库适配记录：登记老人身体状况与适配建议（维修时据此判断是否误用） */
+    @PostMapping("/{id}/handover")
+    @Transactional
+    public Map<String, Object> handover(@PathVariable Long id, @RequestBody HandoverReq req) {
+        User op = currentUser.requireAny(Role.WAREHOUSE, Role.ADMIN, Role.STAFF);
+        RentalOrder o = rentalRepo.findById(id).orElseThrow(() -> BizException.notFound("租赁订单不存在"));
+        if (o.getStatus() != RentalStatus.ACTIVE && o.getStatus() != RentalStatus.DELIVERED) {
+            throw BizException.badRequest("仅在租/已配送订单可登记出库适配");
+        }
+        if (req.elderlyCondition() == null || req.elderlyCondition().isBlank()) {
+            throw BizException.badRequest("请填写老人身体状况");
+        }
+        o.setElderlyCondition(req.elderlyCondition());
+        o.setFittingAdvice(req.fittingAdvice());
+        o.setFamilyConfirmed(false);
+        o.setFamilyConfirmTime(null);
+        o.setFamilyConfirmNote(null);
+        rentalRepo.save(o);
+        DeviceUnit unit = unitRepo.findById(o.getDeviceUnitId()).orElseThrow();
+        eventService.record(unit.getId(), o.getId(), o.getElderlyId(), ServiceEventType.HANDOVER,
+                "出库适配记录", "老人身体状况：" + req.elderlyCondition()
+                        + (req.fittingAdvice() == null ? "" : "；适配建议：" + req.fittingAdvice()), op.getName());
+        return detail(id);
+    }
+
+    public record HandoverConfirmReq(String note) {
+    }
+
+    /** 家属确认出库适配记录 */
+    @PostMapping("/{id}/handover-confirm")
+    @Transactional
+    public Map<String, Object> handoverConfirm(@PathVariable Long id,
+                                               @RequestBody(required = false) HandoverConfirmReq req) {
+        User op = currentUser.get();
+        RentalOrder o = rentalRepo.findById(id).orElseThrow(() -> BizException.notFound("租赁订单不存在"));
+        currentUser.checkFamilyScope(op, o.getElderlyId());
+        if (o.getElderlyCondition() == null) {
+            throw BizException.badRequest("尚未登记出库适配记录");
+        }
+        if (Boolean.TRUE.equals(o.getFamilyConfirmed())) {
+            throw BizException.badRequest("家属已确认过");
+        }
+        o.setFamilyConfirmed(true);
+        o.setFamilyConfirmTime(LocalDateTime.now());
+        o.setFamilyConfirmNote(req == null ? null : req.note());
+        rentalRepo.save(o);
+        DeviceUnit unit = unitRepo.findById(o.getDeviceUnitId()).orElseThrow();
+        eventService.record(unit.getId(), o.getId(), o.getElderlyId(), ServiceEventType.HANDOVER,
+                "家属确认出库适配", req == null || req.note() == null ? "家属已确认适配记录" : req.note(), op.getName());
+        return detail(id);
+    }
+
+    /** 恢复租赁（复评暂停后） */
+    @PostMapping("/{id}/resume")
+    @Transactional
+    public Map<String, Object> resume(@PathVariable Long id) {
+        User op = currentUser.requireAny(Role.STAFF, Role.ADMIN);
+        RentalOrder o = rentalRepo.findById(id).orElseThrow(() -> BizException.notFound("租赁订单不存在"));
+        if (o.getStatus() != RentalStatus.SUSPENDED) {
+            throw BizException.badRequest("仅已暂停的订单可恢复");
+        }
+        o.setStatus(RentalStatus.ACTIVE);
+        rentalRepo.save(o);
+        DeviceUnit unit = unitRepo.findById(o.getDeviceUnitId()).orElseThrow();
+        eventService.record(unit.getId(), o.getId(), o.getElderlyId(), ServiceEventType.RESUME,
+                "恢复租赁", "复评问题已处理，恢复租赁", op.getName());
+        return detail(id);
+    }
+
     public record CloseReq(String reason, String note) {
     }
 
@@ -202,7 +278,7 @@ public class RentalController {
         User op = currentUser.requireAny(Role.STAFF, Role.ADMIN);
         RentalOrder o = rentalRepo.findById(id).orElseThrow(() -> BizException.notFound("租赁订单不存在"));
         if (o.getStatus() != RentalStatus.ACTIVE && o.getStatus() != RentalStatus.DELIVERED
-                && o.getStatus() != RentalStatus.CONFIRMED) {
+                && o.getStatus() != RentalStatus.CONFIRMED && o.getStatus() != RentalStatus.SUSPENDED) {
             throw BizException.badRequest("当前状态不可结案");
         }
         CloseReason reason = req.reason() == null ? CloseReason.NORMAL : CloseReason.valueOf(req.reason());

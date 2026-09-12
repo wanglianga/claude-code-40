@@ -58,6 +58,16 @@ public class RepairController {
                 m.put("serialNo", u.getSerialNo());
                 modelRepo.findById(u.getModelId()).ifPresent(dm -> m.put("modelName", dm.getName()));
             });
+            // 关联租赁的出库适配记录（用于判断是否误用）
+            if (ro.getRentalOrderId() != null) {
+                rentalRepo.findById(ro.getRentalOrderId()).ifPresent(o -> {
+                    Map<String, Object> handover = new LinkedHashMap<>();
+                    handover.put("elderlyCondition", o.getElderlyCondition());
+                    handover.put("fittingAdvice", o.getFittingAdvice());
+                    handover.put("familyConfirmed", o.getFamilyConfirmed());
+                    m.put("handover", handover);
+                });
+            }
             res.add(m);
         }
         return res;
@@ -79,7 +89,7 @@ public class RepairController {
         return Map.of("repair", ro);
     }
 
-    public record FinishReq(BigDecimal cost, String resultNote) {
+    public record FinishReq(BigDecimal cost, String resultNote, Boolean misuse, String misuseNote) {
     }
 
     @PostMapping("/{id}/finish")
@@ -93,6 +103,8 @@ public class RepairController {
         ro.setStatus(RepairStatus.DONE);
         ro.setCost(req.cost() == null ? BigDecimal.ZERO : req.cost());
         ro.setResultNote(req.resultNote());
+        ro.setMisuse(req.misuse());
+        ro.setMisuseNote(req.misuseNote());
         ro.setFinishedAt(LocalDateTime.now());
         repairRepo.save(ro);
 
@@ -108,7 +120,9 @@ public class RepairController {
         Long elderlyId = rentalActive ? rentalRepo.findById(ro.getRentalOrderId()).get().getElderlyId() : null;
         eventService.record(unit.getId(), ro.getRentalOrderId(), elderlyId, ServiceEventType.REPAIR,
                 "维修完成", "维修单 " + ro.getRepairNo() + " 完成，费用 ¥" + ro.getCost()
-                        + (req.resultNote() == null ? "" : "；" + req.resultNote()), op.getName());
+                        + (req.resultNote() == null ? "" : "；" + req.resultNote())
+                        + (req.misuse() == null ? "" : (req.misuse() ? "；判定：家属误用" : "；判定：非误用（正常磨损）")),
+                op.getName());
 
         // 维修费用单独核算（平台支出）
         Payment p = RentalController.newPayment(elderlyId, ro.getRentalOrderId(), unit.getId(),

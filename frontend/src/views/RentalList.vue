@@ -104,11 +104,52 @@
                      @click="act('deliver')">配送上门</el-button>
           <el-button v-if="detail.order.status === 'DELIVERED' && canOps" type="success"
                      @click="act('install')">安装完成起租</el-button>
-          <el-button v-if="['ACTIVE', 'DELIVERED', 'CONFIRMED'].includes(detail.order.status) && isStaff"
+          <el-button v-if="['ACTIVE', 'DELIVERED'].includes(detail.order.status) && canOps && !detail.order.elderlyCondition"
+                     type="primary" plain @click="openHandover">登记出库适配</el-button>
+          <el-button v-if="detail.order.elderlyCondition && !detail.order.familyConfirmed && canConfirmHandover"
+                     type="success" plain @click="handoverConfirmDlg = true">家属确认适配</el-button>
+          <el-button v-if="detail.order.status === 'SUSPENDED' && isStaff" type="success"
+                     @click="act('resume')">恢复租赁</el-button>
+          <el-button v-if="['ACTIVE', 'DELIVERED', 'CONFIRMED', 'SUSPENDED'].includes(detail.order.status) && isStaff"
                      type="warning" @click="closeDlg = true">结案回收</el-button>
           <el-button v-if="['PENDING_CONFIRM', 'CONFIRMED'].includes(detail.order.status) && isStaff"
                      type="danger" plain @click="act('cancel')">取消订单</el-button>
         </div>
+
+        <template v-if="detail.order.elderlyCondition">
+          <h4>出库适配记录（维修误用判定依据）</h4>
+          <el-descriptions :column="1" border size="small">
+            <el-descriptions-item label="老人身体状况">{{ detail.order.elderlyCondition }}</el-descriptions-item>
+            <el-descriptions-item label="适配建议">{{ detail.order.fittingAdvice || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="家属确认">
+              <el-tag :type="detail.order.familyConfirmed ? 'success' : 'warning'" size="small">
+                {{ detail.order.familyConfirmed ? '已确认' : '待确认' }}
+              </el-tag>
+              <span v-if="detail.order.familyConfirmTime" style="margin-left: 8px; color: #909399; font-size: 12px">
+                {{ fmtTime(detail.order.familyConfirmTime) }} {{ detail.order.familyConfirmNote || '' }}
+              </span>
+            </el-descriptions-item>
+          </el-descriptions>
+        </template>
+
+        <template v-if="detail.fitReviews?.length">
+          <h4>尺寸复评</h4>
+          <el-table :data="detail.fitReviews" size="small" border>
+            <el-table-column prop="reviewNo" label="复评单号" width="140" />
+            <el-table-column label="状态" width="120">
+              <template #default="{ row }">
+                <el-tag :type="fitReviewStatusTag[row.status]" size="small">{{ fitReviewStatusMap[row.status] }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="结论" width="90">
+              <template #default="{ row }">{{ row.conclusion ? fitConclusionMap[row.conclusion] : '-' }}</template>
+            </el-table-column>
+            <el-table-column label="处置" width="80">
+              <template #default="{ row }">{{ row.action ? fitActionMap[row.action] : '-' }}</template>
+            </el-table-column>
+            <el-table-column prop="conclusionNote" label="结论原因" min-width="180" show-overflow-tooltip />
+          </el-table>
+        </template>
 
         <h4>费用明细（分账）</h4>
         <el-table :data="detail.payments" size="small" border>
@@ -170,6 +211,40 @@
         <el-button type="warning" @click="close">确认结案</el-button>
       </template>
     </el-dialog>
+
+    <!-- 登记出库适配 -->
+    <el-dialog v-model="handoverDlg" title="登记出库适配记录" width="480px">
+      <el-form label-width="110px">
+        <el-form-item label="老人身体状况" required>
+          <el-input v-model="handoverForm.elderlyCondition" type="textarea" :rows="2"
+                    placeholder="如：意识清楚，左下肢肌力 3 级，可配合适配" />
+        </el-form-item>
+        <el-form-item label="适配建议">
+          <el-input v-model="handoverForm.fittingAdvice" type="textarea" :rows="2"
+                    placeholder="如：座高调至 45cm，靠背 100°，每周复查压痕" />
+        </el-form-item>
+      </el-form>
+      <el-alert type="info" :closable="false">
+        登记后需家属确认；该记录将作为后续维修判断是否误用的依据。
+      </el-alert>
+      <template #footer>
+        <el-button @click="handoverDlg = false">取消</el-button>
+        <el-button type="primary" @click="saveHandover">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 家属确认适配 -->
+    <el-dialog v-model="handoverConfirmDlg" title="家属确认出库适配" width="440px">
+      <el-descriptions :column="1" border size="small" style="margin-bottom: 12px">
+        <el-descriptions-item label="老人身体状况">{{ detail?.order?.elderlyCondition }}</el-descriptions-item>
+        <el-descriptions-item label="适配建议">{{ detail?.order?.fittingAdvice || '-' }}</el-descriptions-item>
+      </el-descriptions>
+      <el-input v-model="handoverConfirmNote" type="textarea" :rows="2" placeholder="确认备注（可选）" />
+      <template #footer>
+        <el-button @click="handoverConfirmDlg = false">取消</el-button>
+        <el-button type="success" @click="confirmHandover">确认无误</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -183,7 +258,8 @@ import {
   categoryMap, rentalStatusMap, rentalStatusTag, closeReasonMap,
   paymentTypeMap, paymentTypeTag, paymentStatusMap, paymentStatusTag,
   feedbackTypeMap, riskMap, riskTag, feedbackStatusMap, feedbackStatusTag,
-  eventTypeMap, eventTypeTag, fmtDate, fmtTime
+  eventTypeMap, eventTypeTag, fitReviewStatusMap, fitReviewStatusTag,
+  fitConclusionMap, fitActionMap, fmtDate, fmtTime
 } from '../api/dicts'
 
 const auth = useAuth()
@@ -196,14 +272,21 @@ const statusFilter = ref('')
 const createDlg = ref(false)
 const detailDlg = ref(false)
 const closeDlg = ref(false)
+const handoverDlg = ref(false)
+const handoverConfirmDlg = ref(false)
 const elderlyList = ref([])
 const elderlyAssessments = ref([])
 const models = ref([])
 const detail = ref(null)
 const createForm = ref({ elderlyId: null, modelId: null, assessmentId: null })
 const closeForm = ref({ reason: 'NORMAL', note: '' })
+const handoverForm = ref({ elderlyCondition: '', fittingAdvice: '' })
+const handoverConfirmNote = ref('')
 
 const canConfirm = computed(() =>
+  auth.isFamily || isStaff.value)
+
+const canConfirmHandover = computed(() =>
   auth.isFamily || isStaff.value)
 
 const stepActive = computed(() => {
@@ -279,6 +362,32 @@ async function close() {
   closeDlg.value = false
   detail.value = await api.get(`/rentals/${id}`)
   load()
+}
+
+function openHandover() {
+  handoverForm.value = { elderlyCondition: '', fittingAdvice: '' }
+  handoverDlg.value = true
+}
+
+async function saveHandover() {
+  if (!handoverForm.value.elderlyCondition) {
+    ElMessage.warning('请填写老人身体状况')
+    return
+  }
+  const id = detail.value.order.id
+  await api.post(`/rentals/${id}/handover`, handoverForm.value)
+  ElMessage.success('出库适配已登记，待家属确认')
+  handoverDlg.value = false
+  detail.value = await api.get(`/rentals/${id}`)
+}
+
+async function confirmHandover() {
+  const id = detail.value.order.id
+  await api.post(`/rentals/${id}/handover-confirm`, { note: handoverConfirmNote.value })
+  ElMessage.success('已确认出库适配')
+  handoverConfirmDlg.value = false
+  handoverConfirmNote.value = ''
+  detail.value = await api.get(`/rentals/${id}`)
 }
 
 onMounted(load)

@@ -43,6 +43,12 @@ public class RepairOrder {
     @Column(length = 1000)
     private String resultNote;
 
+    /** 误用判定：结合出库适配记录判断是否家属误用 */
+    private Boolean misuse;
+
+    @Column(length = 500)
+    private String misuseNote;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 
     private LocalDateTime finishedAt;

@@ -67,5 +67,21 @@ public class RentalOrder {
     @Column(length = 1000)
     private String closeNote;
 
+    /** 出库适配记录：老人身体状况（维修时用于判断是否误用） */
+    @Column(length = 1000)
+    private String elderlyCondition;
+
+    /** 出库适配记录：适配建议 */
+    @Column(length = 1000)
+    private String fittingAdvice;
+
+    /** 家属确认出库适配 */
+    private Boolean familyConfirmed = false;
+
+    private LocalDateTime familyConfirmTime;
+
+    @Column(length = 500)
+    private String familyConfirmNote;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 }

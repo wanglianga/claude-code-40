@@ -20,11 +20,11 @@ export const deviceStatusTag = {
 
 export const rentalStatusMap = {
   PENDING_CONFIRM: '待家属确认', CONFIRMED: '已确认待配送', DELIVERED: '已配送待安装',
-  ACTIVE: '租赁中', CLOSED: '已结案', CANCELLED: '已取消'
+  ACTIVE: '租赁中', SUSPENDED: '已暂停', CLOSED: '已结案', CANCELLED: '已取消'
 }
 export const rentalStatusTag = {
   PENDING_CONFIRM: 'warning', CONFIRMED: 'primary', DELIVERED: 'primary',
-  ACTIVE: 'success', CLOSED: 'info', CANCELLED: 'info'
+  ACTIVE: 'success', SUSPENDED: 'warning', CLOSED: 'info', CANCELLED: 'info'
 }
 
 export const closeReasonMap = {
@@ -45,7 +45,7 @@ export const riskMap = { LOW: '低风险', MEDIUM: '中风险', HIGH: '高风险
 export const riskTag = { LOW: 'success', MEDIUM: 'warning', HIGH: 'danger' }
 export const feedbackStatusMap = { PENDING: '待处理', RESOLVED: '已解决' }
 export const feedbackStatusTag = { PENDING: 'danger', RESOLVED: 'success' }
-export const resolutionMap = { NONE: '无需上门', REPAIR: '维修', EXCHANGE: '换型', REASSESS: '再次评估' }
+export const resolutionMap = { NONE: '无需上门', REPAIR: '维修', EXCHANGE: '换型', REASSESS: '再次评估', FIT_REVIEW: '尺寸复评' }
 
 export const repairStatusMap = { PENDING: '待处理', IN_PROGRESS: '维修中', DONE: '已完成' }
 export const repairStatusTag = { PENDING: 'warning', IN_PROGRESS: 'primary', DONE: 'success' }
@@ -60,15 +60,28 @@ export const subsidyStatusMap = { PENDING: '待审核', APPROVED: '已通过', R
 export const subsidyStatusTag = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', WRITTEN_OFF: 'info' }
 
 export const eventTypeMap = {
-  CREATE: '订单创建', DELIVERY: '配送', INSTALL: '安装', FEEDBACK: '反馈', REPAIR: '维修',
-  EXCHANGE: '换型', REASSESS: '再次评估', RECALL: '回收', DISINFECT: '消毒', QC: '质检',
-  RESTOCK: '再上架', SCRAP: '报废', CLOSE: '结案/核销'
+  CREATE: '订单创建', DELIVERY: '配送', INSTALL: '安装', HANDOVER: '出库适配', FEEDBACK: '反馈',
+  REPAIR: '维修', EXCHANGE: '换型', REASSESS: '再次评估', FIT_REVIEW: '尺寸复评',
+  TRAINING: '培训', SUSPEND: '暂停', RESUME: '恢复',
+  RECALL: '回收', DISINFECT: '消毒', QC: '质检', RESTOCK: '再上架', SCRAP: '报废', CLOSE: '结案/核销'
 }
 export const eventTypeTag = {
-  CREATE: 'primary', DELIVERY: 'primary', INSTALL: 'success', FEEDBACK: 'warning', REPAIR: 'danger',
-  EXCHANGE: 'warning', REASSESS: 'warning', RECALL: 'warning', DISINFECT: 'primary', QC: 'primary',
-  RESTOCK: 'success', SCRAP: 'info', CLOSE: 'info'
+  CREATE: 'primary', DELIVERY: 'primary', INSTALL: 'success', HANDOVER: 'success', FEEDBACK: 'warning',
+  REPAIR: 'danger', EXCHANGE: 'warning', REASSESS: 'warning', FIT_REVIEW: 'warning',
+  TRAINING: 'success', SUSPEND: 'warning', RESUME: 'success',
+  RECALL: 'warning', DISINFECT: 'primary', QC: 'primary', RESTOCK: 'success', SCRAP: 'info', CLOSE: 'info'
 }
+
+export const fitReviewStatusMap = {
+  PENDING_INFO: '待家属上传资料', PENDING_REVIEW: '待评估师复评', EXCHANGING: '待换型执行', COMPLETED: '已完成'
+}
+export const fitReviewStatusTag = {
+  PENDING_INFO: 'warning', PENDING_REVIEW: 'primary', EXCHANGING: 'warning', COMPLETED: 'success'
+}
+export const fitConclusionMap = { OPERATION_ISSUE: '操作问题', SIZE_MISMATCH: '尺寸不合', CONDITION_CHANGE: '病情变化' }
+export const fitConclusionTag = { OPERATION_ISSUE: 'warning', SIZE_MISMATCH: 'danger', CONDITION_CHANGE: 'info' }
+export const fitActionMap = { TRAINING: '培训', EXCHANGE: '换型', SUSPEND: '暂停租赁', NONE: '无需处理' }
+export const fitActionTag = { TRAINING: 'success', EXCHANGE: 'warning', SUSPEND: 'danger', NONE: 'info' }
 
 export function fmtTime(t) {
   return t ? String(t).replace('T', ' ').slice(0, 16) : '-'
