@@ -31,6 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     private final SubsidyRepository subsidyRepo;
     private final ServiceEventRepository eventRepo;
     private final FitReviewRepository fitReviewRepo;
+    private final SparePartRepository sparePartRepo;
     private final PasswordEncoder encoder;
 
     private int paySeq = 1;
@@ -41,7 +42,7 @@ public class DataInitializer implements CommandLineRunner {
                            FeedbackRepository feedbackRepo, RepairOrderRepository repairRepo,
                            PaymentRepository paymentRepo, SubsidyRepository subsidyRepo,
                            ServiceEventRepository eventRepo, FitReviewRepository fitReviewRepo,
-                           PasswordEncoder encoder) {
+                           SparePartRepository sparePartRepo, PasswordEncoder encoder) {
         this.userRepo = userRepo;
         this.elderlyRepo = elderlyRepo;
         this.assessmentRepo = assessmentRepo;
@@ -54,6 +55,7 @@ public class DataInitializer implements CommandLineRunner {
         this.subsidyRepo = subsidyRepo;
         this.eventRepo = eventRepo;
         this.fitReviewRepo = fitReviewRepo;
+        this.sparePartRepo = sparePartRepo;
         this.encoder = encoder;
     }
 
@@ -64,6 +66,27 @@ public class DataInitializer implements CommandLineRunner {
             seedAll();
         }
         seedFitDemo();
+        seedSpareParts();
+    }
+
+    /** 备件库存（幂等） */
+    private void seedSpareParts() {
+        if (sparePartRepo.count() > 0) {
+            return;
+        }
+        spare("BRK-01", "轮椅刹车线", 5);
+        spare("PUMP-01", "气垫气泵", 2);
+        spare("BRG-01", "助行器前轮轴承", 8);
+        spare("REMOTE-01", "护理床遥控器", 3);
+        spare("CUSHION-01", "减压坐垫", 4);
+    }
+
+    private void spare(String code, String name, int stock) {
+        SparePart p = new SparePart();
+        p.setPartCode(code);
+        p.setName(name);
+        p.setStock(stock);
+        sparePartRepo.save(p);
     }
 
     /** 首轮全量演示数据 */

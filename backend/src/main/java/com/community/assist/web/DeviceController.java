@@ -31,12 +31,14 @@ public class DeviceController {
     private final RentalOrderRepository rentalRepo;
     private final ElderlyRepository elderlyRepo;
     private final SubsidyRepository subsidyRepo;
+    private final PaymentRepository paymentRepo;
     private final EventService eventService;
     private final CurrentUser currentUser;
 
     public DeviceController(DeviceModelRepository modelRepo, DeviceUnitRepository unitRepo,
                             ServiceEventRepository eventRepo, RentalOrderRepository rentalRepo,
                             ElderlyRepository elderlyRepo, SubsidyRepository subsidyRepo,
+                            PaymentRepository paymentRepo,
                             EventService eventService, CurrentUser currentUser) {
         this.modelRepo = modelRepo;
         this.unitRepo = unitRepo;
@@ -44,6 +46,7 @@ public class DeviceController {
         this.rentalRepo = rentalRepo;
         this.elderlyRepo = elderlyRepo;
         this.subsidyRepo = subsidyRepo;
+        this.paymentRepo = paymentRepo;
         this.eventService = eventService;
         this.currentUser = currentUser;
     }
@@ -151,10 +154,11 @@ public class DeviceController {
         return unitView(u);
     }
 
-    public record QcReq(Boolean pass, String note) {
+    public record QcReq(Boolean pass, String note, String inspectionResult, java.math.BigDecimal deductAmount) {
     }
 
-    /** 消毒质检结果：合格→再上架（影响库存周转与补贴核销）；不合格→报废 */
+    /** 消毒质检结果：合格→再上架（影响库存周转与补贴核销）；不合格→报废。
+     *  回收检测区分正常磨损/配件缺失/护理员操作问题，扣款联动押金结算。 */
     @PostMapping("/units/{id}/qc")
     @Transactional
     public Map<String, Object> qc(@PathVariable Long id, @RequestBody QcReq req) {
@@ -165,23 +169,78 @@ public class DeviceController {
         }
         boolean pass = req.pass() != null && req.pass();
         String note = req.note() == null ? "" : req.note();
+        Enums.InspectionResult inspection = req.inspectionResult() == null
+                ? Enums.InspectionResult.NORMAL_WEAR
+                : Enums.InspectionResult.valueOf(req.inspectionResult());
+        java.math.BigDecimal deduct = req.deductAmount() == null ? java.math.BigDecimal.ZERO : req.deductAmount();
+        if (deduct.signum() < 0) {
+            throw BizException.badRequest("扣款金额不能为负");
+        }
+        String inspectionLabel = inspectionLabel(inspection);
+        String qcDetail = "检测结果：" + inspectionLabel
+                + (deduct.signum() > 0 ? "，扣款 ¥" + deduct : "") + (note.isEmpty() ? "" : "；" + note);
         if (pass) {
             u.setStatus(DeviceStatus.IN_STOCK);
             u.setRentalCount(u.getRentalCount() + 1);
-            u.setConditionNote("质检合格：" + note);
-            eventService.record(u.getId(), null, null, ServiceEventType.QC, "消毒质检合格", note, op.getName());
+            u.setConditionNote("质检合格（" + inspectionLabel + "）：" + note);
+            eventService.record(u.getId(), null, null, ServiceEventType.QC, "消毒质检合格", qcDetail, op.getName());
             eventService.record(u.getId(), null, null, ServiceEventType.RESTOCK, "再次上架",
                     "辅具 " + u.getSerialNo() + " 重新进入可租库存", op.getName());
         } else {
             u.setStatus(DeviceStatus.SCRAPPED);
-            u.setConditionNote("质检不合格报废：" + note);
-            eventService.record(u.getId(), null, null, ServiceEventType.QC, "消毒质检不合格", note, op.getName());
+            u.setConditionNote("质检不合格报废（" + inspectionLabel + "）：" + note);
+            eventService.record(u.getId(), null, null, ServiceEventType.QC, "消毒质检不合格", qcDetail, op.getName());
             eventService.record(u.getId(), null, null, ServiceEventType.SCRAP, "报废出库",
                     "辅具 " + u.getSerialNo() + " 不再投入租赁", op.getName());
         }
         unitRepo.save(u);
+        if (deduct.signum() > 0 && inspection != Enums.InspectionResult.NORMAL_WEAR) {
+            applyDepositDeduction(u, deduct, inspectionLabel, op);
+        }
         writeOffSubsidies(u, op);
         return unitView(u);
+    }
+
+    /** 回收检测扣款：冲减待退押金，并生成「检测扣款」费用（分账） */
+    private void applyDepositDeduction(DeviceUnit u, java.math.BigDecimal deduct, String inspectionLabel, User op) {
+        rentalRepo.findFirstByDeviceUnitIdOrderByIdDesc(u.getId()).ifPresent(order -> {
+            if (order.getStatus() != Enums.RentalStatus.CLOSED) {
+                return;
+            }
+            paymentRepo.findFirstByRentalOrderIdAndTypeOrderByIdAsc(order.getId(), Enums.PaymentType.DEPOSIT_REFUND)
+                    .ifPresent(refund -> {
+                        if (refund.getStatus() != Enums.PaymentStatus.PENDING) {
+                            return;
+                        }
+                        java.math.BigDecimal newAmount = refund.getAmount().subtract(deduct);
+                        if (newAmount.signum() < 0) {
+                            newAmount = java.math.BigDecimal.ZERO;
+                        }
+                        refund.setAmount(newAmount);
+                        refund.setRemark("回收检测：" + inspectionLabel + "，扣款 ¥" + deduct);
+                        paymentRepo.save(refund);
+
+                        Payment ded = RentalController.newPayment(order.getElderlyId(), order.getId(), u.getId(),
+                                Enums.PaymentType.DEDUCTION, Enums.PaymentDirection.INCOME, deduct,
+                                "回收检测扣款-" + inspectionLabel);
+                        ded.setStatus(Enums.PaymentStatus.PAID);
+                        ded.setPaidAt(LocalDateTime.now());
+                        ded.setRemark("订单 " + order.getOrderNo() + " 押金结算扣款");
+                        paymentRepo.save(ded);
+
+                        eventService.record(u.getId(), order.getId(), order.getElderlyId(), ServiceEventType.QC,
+                                "押金结算扣款", "检测判定「" + inspectionLabel + "」，押金扣款 ¥" + deduct
+                                        + "，应退 ¥" + newAmount, op.getName());
+                    });
+        });
+    }
+
+    static String inspectionLabel(Enums.InspectionResult r) {
+        return switch (r) {
+            case NORMAL_WEAR -> "正常磨损";
+            case PARTS_MISSING -> "配件缺失";
+            case MISUSE -> "护理员操作问题";
+        };
     }
 
     /** 租赁结案且辅具完成回收质检后，核销该租赁已通过的补贴 */

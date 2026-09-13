@@ -16,8 +16,6 @@ spring:
       hibernate:
         jdbc:
           time_zone: Asia/Shanghai
-        # 不为枚举列生成 CHECK 约束，便于枚举值后续演进
-        check_enum_constraints: false
   jackson:
     time-zone: Asia/Shanghai
     date-format: yyyy-MM-dd HH:mm:ss

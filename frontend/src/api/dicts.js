@@ -39,7 +39,7 @@ export const assessmentStatusTag = { PENDING: 'warning', COMPLETED: 'success' }
 
 export const feedbackTypeMap = {
   WEAR: '磨损', NOISE: '异响', SIZE_MISFIT: '尺寸不适',
-  FALL: '老人摔倒', CANT_OPERATE: '不会操作', OTHER: '其他'
+  FALL: '老人摔倒', CANT_OPERATE: '不会操作', BRAKE_FAILURE: '刹车失灵', AIR_LEAK: '气垫漏气', OTHER: '其他'
 }
 export const riskMap = { LOW: '低风险', MEDIUM: '中风险', HIGH: '高风险' }
 export const riskTag = { LOW: 'success', MEDIUM: 'warning', HIGH: 'danger' }
@@ -47,11 +47,19 @@ export const feedbackStatusMap = { PENDING: '待处理', RESOLVED: '已解决' }
 export const feedbackStatusTag = { PENDING: 'danger', RESOLVED: 'success' }
 export const resolutionMap = { NONE: '无需上门', REPAIR: '维修', EXCHANGE: '换型', REASSESS: '再次评估', FIT_REVIEW: '尺寸复评' }
 
-export const repairStatusMap = { PENDING: '待处理', IN_PROGRESS: '维修中', DONE: '已完成' }
-export const repairStatusTag = { PENDING: 'warning', IN_PROGRESS: 'primary', DONE: 'success' }
+export const repairStatusMap = { PENDING: '待排程', SCHEDULED: '已排程', IN_PROGRESS: '维修中', DONE: '已完成' }
+export const repairStatusTag = { PENDING: 'warning', SCHEDULED: 'primary', IN_PROGRESS: 'primary', DONE: 'success' }
 
-export const paymentTypeMap = { DEPOSIT: '押金', RENT: '租金', SUBSIDY: '补贴', REPAIR: '维修费', DEPOSIT_REFUND: '押金退还' }
-export const paymentTypeTag = { DEPOSIT: 'warning', RENT: 'primary', SUBSIDY: 'success', REPAIR: 'danger', DEPOSIT_REFUND: 'info' }
+export const repairPriorityMap = { URGENT: '紧急', HIGH: '优先', NORMAL: '常规' }
+export const repairPriorityTag = { URGENT: 'danger', HIGH: 'warning', NORMAL: 'info' }
+
+export const visitResultMap = { NORMAL: '试用正常', ABNORMAL: '仍有问题' }
+
+export const inspectionResultMap = { NORMAL_WEAR: '正常磨损', PARTS_MISSING: '配件缺失', MISUSE: '护理员操作问题' }
+export const inspectionResultTag = { NORMAL_WEAR: 'success', PARTS_MISSING: 'warning', MISUSE: 'danger' }
+
+export const paymentTypeMap = { DEPOSIT: '押金', RENT: '租金', SUBSIDY: '补贴', REPAIR: '维修费', DEPOSIT_REFUND: '押金退还', DEDUCTION: '检测扣款' }
+export const paymentTypeTag = { DEPOSIT: 'warning', RENT: 'primary', SUBSIDY: 'success', REPAIR: 'danger', DEPOSIT_REFUND: 'info', DEDUCTION: 'danger' }
 export const paymentStatusMap = { PENDING: '待支付', PAID: '已支付', REFUNDED: '已退还' }
 export const paymentStatusTag = { PENDING: 'warning', PAID: 'success', REFUNDED: 'info' }
 export const directionMap = { INCOME: '收入', EXPENSE: '支出' }

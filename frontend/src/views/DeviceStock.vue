@@ -73,18 +73,26 @@
     </el-dialog>
 
     <!-- 质检 -->
-    <el-dialog v-model="qcDlg" title="消毒质检结果" width="420px">
-      <el-form label-width="90px">
+    <el-dialog v-model="qcDlg" title="消毒质检与回收检测" width="480px">
+      <el-form label-width="100px">
         <el-form-item label="质检结论">
           <el-radio-group v-model="qcForm.pass">
             <el-radio :value="true">合格 · 再上架</el-radio>
             <el-radio :value="false">不合格 · 报废</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item label="回收检测">
+          <el-radio-group v-model="qcForm.inspectionResult">
+            <el-radio v-for="(v, k) in inspectionResultMap" :key="k" :value="k">{{ v }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item v-if="qcForm.inspectionResult !== 'NORMAL_WEAR'" label="押金扣款(元)">
+          <el-input-number v-model="qcForm.deductAmount" :min="0" :precision="2" style="width: 100%" />
+        </el-form-item>
         <el-form-item label="质检说明"><el-input v-model="qcForm.note" type="textarea" :rows="2" /></el-form-item>
       </el-form>
       <el-alert type="info" :closable="false">
-        质检合格将重新计入可租库存；若关联租赁有待核销补贴，将自动完成补贴核销。
+        质检合格将重新计入可租库存并自动核销补贴；检测判定「配件缺失/护理员操作问题」的扣款将冲减待退押金并单独记账，作为押金结算依据。
       </el-alert>
       <template #footer>
         <el-button @click="qcDlg = false">取消</el-button>
@@ -142,7 +150,7 @@ import api from '../api'
 import { useAuth } from '../store/auth'
 import {
   categoryMap, deviceStatusMap, deviceStatusTag, rentalStatusMap, rentalStatusTag,
-  eventTypeMap, eventTypeTag, fmtDate, fmtTime
+  eventTypeMap, eventTypeTag, inspectionResultMap, fmtDate, fmtTime
 } from '../api/dicts'
 
 const auth = useAuth()
@@ -155,7 +163,7 @@ const addDlg = ref(false)
 const qcDlg = ref(false)
 const lifeDlg = ref(false)
 const addForm = ref({ modelId: null, serialNo: '', conditionNote: '' })
-const qcForm = ref({ pass: true, note: '' })
+const qcForm = ref({ pass: true, note: '', inspectionResult: 'NORMAL_WEAR', deductAmount: 0 })
 const qcUnitId = ref(null)
 const life = ref(null)
 
@@ -197,7 +205,7 @@ async function disinfect(row) {
 
 function openQc(row) {
   qcUnitId.value = row.unit.id
-  qcForm.value = { pass: true, note: '' }
+  qcForm.value = { pass: true, note: '', inspectionResult: 'NORMAL_WEAR', deductAmount: 0 }
   qcDlg.value = true
 }
 

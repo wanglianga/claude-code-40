@@ -7,6 +7,7 @@ import com.community.assist.service.BizException;
 import com.community.assist.service.CurrentUser;
 import com.community.assist.service.EventService;
 import com.community.assist.service.FitReviewService;
+import com.community.assist.service.RepairSchedulingService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,13 +33,15 @@ public class FeedbackController {
     private final AssessmentRepository assessmentRepo;
     private final EventService eventService;
     private final FitReviewService fitReviewService;
+    private final RepairSchedulingService schedulingService;
     private final CurrentUser currentUser;
 
     public FeedbackController(FeedbackRepository feedbackRepo, RentalOrderRepository rentalRepo,
                               ElderlyRepository elderlyRepo, DeviceUnitRepository unitRepo,
                               DeviceModelRepository modelRepo, RepairOrderRepository repairRepo,
                               AssessmentRepository assessmentRepo, EventService eventService,
-                              FitReviewService fitReviewService, CurrentUser currentUser) {
+                              FitReviewService fitReviewService, RepairSchedulingService schedulingService,
+                              CurrentUser currentUser) {
         this.feedbackRepo = feedbackRepo;
         this.rentalRepo = rentalRepo;
         this.elderlyRepo = elderlyRepo;
@@ -48,6 +51,7 @@ public class FeedbackController {
         this.assessmentRepo = assessmentRepo;
         this.eventService = eventService;
         this.fitReviewService = fitReviewService;
+        this.schedulingService = schedulingService;
         this.currentUser = currentUser;
     }
 
@@ -126,8 +130,12 @@ public class FeedbackController {
                 ro.setDeviceUnitId(unit.getId());
                 ro.setFeedbackId(f.getId());
                 ro.setRentalOrderId(o.getId());
+                ro.setFaultType(f.getType());
                 ro.setDescription("反馈触发维修：" + (f.getDescription() == null ? "" : f.getDescription()));
                 repairRepo.save(ro);
+                // 自动按风险/独居/距离/备件排程，并通知照护人临时措施
+                Elderly elderly = elderlyRepo.findById(o.getElderlyId()).orElseThrow();
+                schedulingService.schedule(ro, elderly, f.getType(), op.getName());
                 unit.setStatus(DeviceStatus.MAINTENANCE);
                 unitRepo.save(unit);
                 eventService.record(unit.getId(), o.getId(), o.getElderlyId(), ServiceEventType.REPAIR,
@@ -181,11 +189,7 @@ public class FeedbackController {
     }
 
     static RiskLevel riskOf(FeedbackType t) {
-        return switch (t) {
-            case FALL -> RiskLevel.HIGH;
-            case SIZE_MISFIT, CANT_OPERATE -> RiskLevel.MEDIUM;
-            default -> RiskLevel.LOW;
-        };
+        return RepairSchedulingService.riskOf(t);
     }
 
     static String typeLabel(FeedbackType t) {
@@ -195,6 +199,8 @@ public class FeedbackController {
             case SIZE_MISFIT -> "尺寸不适";
             case FALL -> "老人摔倒";
             case CANT_OPERATE -> "不会操作";
+            case BRAKE_FAILURE -> "刹车失灵";
+            case AIR_LEAK -> "气垫漏气";
             case OTHER -> "其他";
         };
     }

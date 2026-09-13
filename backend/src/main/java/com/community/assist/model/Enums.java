@@ -36,7 +36,7 @@ public final class Enums {
     public enum AssessmentStatus {PENDING, COMPLETED}
 
     /** 使用反馈类型 */
-    public enum FeedbackType {WEAR, NOISE, SIZE_MISFIT, FALL, CANT_OPERATE, OTHER}
+    public enum FeedbackType {WEAR, NOISE, SIZE_MISFIT, FALL, CANT_OPERATE, BRAKE_FAILURE, AIR_LEAK, OTHER}
 
     /** 风险等级 */
     public enum RiskLevel {LOW, MEDIUM, HIGH}
@@ -48,13 +48,13 @@ public final class Enums {
     public enum Resolution {NONE, REPAIR, EXCHANGE, REASSESS, FIT_REVIEW}
 
     /** 维修单状态 */
-    public enum RepairStatus {PENDING, IN_PROGRESS, DONE}
+    public enum RepairStatus {PENDING, SCHEDULED, IN_PROGRESS, DONE}
 
     /** 辅具生命周期事件类型 */
     public enum ServiceEventType {CREATE, DELIVERY, INSTALL, HANDOVER, FEEDBACK, REPAIR, EXCHANGE, REASSESS, FIT_REVIEW, TRAINING, SUSPEND, RESUME, RECALL, DISINFECT, QC, RESTOCK, SCRAP, CLOSE}
 
-    /** 费用类型：押金/租金/补贴/维修费/押金退还 */
-    public enum PaymentType {DEPOSIT, RENT, SUBSIDY, REPAIR, DEPOSIT_REFUND}
+    /** 费用类型：押金/租金/补贴/维修费/押金退还/回收检测扣款 */
+    public enum PaymentType {DEPOSIT, RENT, SUBSIDY, REPAIR, DEPOSIT_REFUND, DEDUCTION}
 
     /** 收支方向 */
     public enum PaymentDirection {INCOME, EXPENSE}
@@ -73,4 +73,13 @@ public final class Enums {
 
     /** 复评处置：培训/换型/暂停租赁/无需处理 */
     public enum FitAction {TRAINING, EXCHANGE, SUSPEND, NONE}
+
+    /** 维修优先级 */
+    public enum RepairPriority {URGENT, HIGH, NORMAL}
+
+    /** 上门试用结果 */
+    public enum VisitResult {NORMAL, ABNORMAL}
+
+    /** 回收检测结论：正常磨损/配件缺失/护理员操作问题 */
+    public enum InspectionResult {NORMAL_WEAR, PARTS_MISSING, MISUSE}
 }
