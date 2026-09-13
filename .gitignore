@@ -41,10 +41,11 @@ qa/
 **/qa/
 .playwright-cli/
 .claude/
+CLAUDE.md
+**/CLAUDE.md
 
 # OS/editor files
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
-
