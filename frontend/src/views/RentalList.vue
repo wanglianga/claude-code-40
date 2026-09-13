@@ -219,7 +219,7 @@
           <el-input v-model="handoverForm.elderlyCondition" type="textarea" :rows="2"
                     placeholder="如：意识清楚，左下肢肌力 3 级，可配合适配" />
         </el-form-item>
-        <el-form-item label="适配建议">
+        <el-form-item label="适配建议" required>
           <el-input v-model="handoverForm.fittingAdvice" type="textarea" :rows="2"
                     placeholder="如：座高调至 45cm，靠背 100°，每周复查压痕" />
         </el-form-item>
@@ -370,8 +370,11 @@ function openHandover() {
 }
 
 async function saveHandover() {
-  if (!handoverForm.value.elderlyCondition) {
-    ElMessage.warning('请填写老人身体状况')
+  const missing = []
+  if (!handoverForm.value.elderlyCondition || !handoverForm.value.elderlyCondition.trim()) missing.push('老人身体状况')
+  if (!handoverForm.value.fittingAdvice || !handoverForm.value.fittingAdvice.trim()) missing.push('适配建议')
+  if (missing.length) {
+    ElMessage.warning('出库适配记录不完整，请补充：' + missing.join('、'))
     return
   }
   const id = detail.value.order.id

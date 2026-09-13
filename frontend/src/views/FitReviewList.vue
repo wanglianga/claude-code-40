@@ -73,7 +73,7 @@
     <!-- 家属上传资料 -->
     <el-dialog v-model="infoDlg" title="上传复评资料" width="560px">
       <el-form label-width="110px">
-        <el-form-item label="使用照片">
+        <el-form-item label="使用照片" required>
           <div class="photo-row">
             <el-image v-for="p in infoForm.photos" :key="p" :src="fileUrl(p)" :preview-src-list="photoUrls"
                       fit="cover" class="photo-thumb" preview-teleported />
@@ -94,17 +94,17 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="房间宽(cm)">
+            <el-form-item label="房间宽(cm)" required>
               <el-input-number v-model="infoForm.roomWidthCm" :min="0" :max="1000" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="房间长(cm)">
+            <el-form-item label="房间长(cm)" required>
               <el-input-number v-model="infoForm.roomLengthCm" :min="0" :max="1000" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="照护人说明">
+        <el-form-item label="照护人说明" required>
           <el-input v-model="infoForm.caregiverNote" type="textarea" :rows="3"
                     placeholder="不适部位、出现时间、使用场景、已尝试的调整等" />
         </el-form-item>
@@ -319,17 +319,25 @@ async function uploadPhoto(opt) {
 }
 
 async function submitInfo() {
-  if (!infoForm.value.heightCm || !infoForm.value.weightKg) {
-    ElMessage.warning('请填写身高与体重')
+  const f = infoForm.value
+  const missing = []
+  if (!f.photos.length) missing.push('使用照片')
+  if (!f.heightCm) missing.push('身高')
+  if (!f.weightKg) missing.push('体重')
+  if (!f.roomWidthCm) missing.push('房间宽度')
+  if (!f.roomLengthCm) missing.push('房间长度')
+  if (!f.caregiverNote || !f.caregiverNote.trim()) missing.push('照护人说明')
+  if (missing.length) {
+    ElMessage.warning('复评资料不完整，请补充：' + missing.join('、'))
     return
   }
   await api.post(`/fit-reviews/${current.value.review.id}/info`, {
-    photoUrls: infoForm.value.photos.join(','),
-    heightCm: infoForm.value.heightCm,
-    weightKg: infoForm.value.weightKg,
-    roomWidthCm: infoForm.value.roomWidthCm,
-    roomLengthCm: infoForm.value.roomLengthCm,
-    caregiverNote: infoForm.value.caregiverNote
+    photoUrls: f.photos.join(','),
+    heightCm: f.heightCm,
+    weightKg: f.weightKg,
+    roomWidthCm: f.roomWidthCm,
+    roomLengthCm: f.roomLengthCm,
+    caregiverNote: f.caregiverNote
   })
   ElMessage.success('资料已提交，等待评估师复评')
   infoDlg.value = false

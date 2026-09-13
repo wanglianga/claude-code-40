@@ -199,7 +199,7 @@ public class RentalController {
     public record HandoverReq(String elderlyCondition, String fittingAdvice) {
     }
 
-    /** 出库适配记录：登记老人身体状况与适配建议（维修时据此判断是否误用） */
+    /** 出库适配记录：登记老人身体状况与适配建议（缺一拒绝；维修时据此判断是否误用） */
     @PostMapping("/{id}/handover")
     @Transactional
     public Map<String, Object> handover(@PathVariable Long id, @RequestBody HandoverReq req) {
@@ -208,8 +208,16 @@ public class RentalController {
         if (o.getStatus() != RentalStatus.ACTIVE && o.getStatus() != RentalStatus.DELIVERED) {
             throw BizException.badRequest("仅在租/已配送订单可登记出库适配");
         }
+        List<String> missing = new ArrayList<>();
         if (req.elderlyCondition() == null || req.elderlyCondition().isBlank()) {
-            throw BizException.badRequest("请填写老人身体状况");
+            missing.add("老人身体状况");
+        }
+        if (req.fittingAdvice() == null || req.fittingAdvice().isBlank()) {
+            missing.add("适配建议");
+        }
+        if (!missing.isEmpty()) {
+            throw BizException.badRequest("出库适配记录不完整，缺少：" + String.join("、", missing)
+                    + "。该记录是维修误用判定的依据，请补齐后再保存");
         }
         o.setElderlyCondition(req.elderlyCondition());
         o.setFittingAdvice(req.fittingAdvice());

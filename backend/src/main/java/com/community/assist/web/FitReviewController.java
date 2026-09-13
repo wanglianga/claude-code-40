@@ -95,7 +95,7 @@ public class FitReviewController {
                           Integer roomWidthCm, Integer roomLengthCm, String caregiverNote) {
     }
 
-    /** 家属上传复评资料：使用照片、身高体重、房间尺寸、照护人说明 */
+    /** 家属上传复评资料：使用照片、身高体重、房间尺寸、照护人说明（缺一拒绝，状态不流转） */
     @PostMapping("/{id}/info")
     @Transactional
     public Map<String, Object> submitInfo(@PathVariable Long id, @RequestBody InfoReq req) {
@@ -105,8 +105,28 @@ public class FitReviewController {
         if (r.getStatus() != FitReviewStatus.PENDING_INFO) {
             throw BizException.badRequest("该复评单已提交过资料");
         }
-        if (req.heightCm() == null || req.weightKg() == null) {
-            throw BizException.badRequest("请填写老人身高与体重");
+        List<String> missing = new ArrayList<>();
+        if (req.photoUrls() == null || req.photoUrls().isBlank()) {
+            missing.add("使用照片");
+        }
+        if (req.heightCm() == null || req.heightCm() <= 0) {
+            missing.add("身高");
+        }
+        if (req.weightKg() == null || req.weightKg() <= 0) {
+            missing.add("体重");
+        }
+        if (req.roomWidthCm() == null || req.roomWidthCm() <= 0) {
+            missing.add("房间宽度");
+        }
+        if (req.roomLengthCm() == null || req.roomLengthCm() <= 0) {
+            missing.add("房间长度");
+        }
+        if (req.caregiverNote() == null || req.caregiverNote().isBlank()) {
+            missing.add("照护人说明");
+        }
+        if (!missing.isEmpty()) {
+            throw BizException.badRequest("复评资料不完整，缺少：" + String.join("、", missing)
+                    + "。请补齐后再提交，复评结论需建立在完整资料上");
         }
         r.setPhotoUrls(req.photoUrls());
         r.setHeightCm(req.heightCm());
